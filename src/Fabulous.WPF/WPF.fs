@@ -4,7 +4,6 @@ namespace Fabulous.WPF
 #nowarn "59" // cast always holds
 #nowarn "66" // cast always holds
 #nowarn "67" // cast always holds
-#nowarn "46" // `checked` is a correct name 
 
 open Fabulous
 
@@ -29,8 +28,22 @@ module ViewAttributes =
     let ValueAttribKey : AttributeKey<_> = AttributeKey<_>("Value")
     let ChildrenAttribKey : AttributeKey<_> = AttributeKey<_>("Children")
     let OrientationAttribKey : AttributeKey<_> = AttributeKey<_>("Orientation")
+    let ChildAttribKey : AttributeKey<_> = AttributeKey<_>("Child")
+    let CornerRadiusAttribKey : AttributeKey<_> = AttributeKey<_>("CornerRadius")
+    let BorderThicknessAttribKey : AttributeKey<_> = AttributeKey<_>("BorderThickness")
+    let PaddingAttribKey : AttributeKey<_> = AttributeKey<_>("Padding")
+    let BorderBrushAttribKey : AttributeKey<_> = AttributeKey<_>("BorderBrush")
+    let BackgroundAttribKey : AttributeKey<_> = AttributeKey<_>("Background")
 
 type ViewBuilders() =
+    /// Builds the attributes for a UIElement in the view
+    static member inline BuildUIElement(attribCount: int) = 
+        let attribBuilder = new AttributesBuilder(attribCount)
+        attribBuilder
+
+    static member UpdateUIElement (prevOpt: ViewElement voption, curr: ViewElement, target: System.Windows.UIElement) = 
+        ()
+
     /// Builds the attributes for a FrameworkElement in the view
     static member inline BuildFrameworkElement(attribCount: int,
                                                ?horizontalAlignment: System.Windows.HorizontalAlignment,
@@ -43,7 +56,7 @@ type ViewBuilders() =
         let attribCount = match verticalAlignment with Some _ -> attribCount + 1 | None -> attribCount
         let attribCount = match width with Some _ -> attribCount + 1 | None -> attribCount
 
-        let attribBuilder = new AttributesBuilder(attribCount)
+        let attribBuilder = ViewBuilders.BuildUIElement(attribCount)
         match horizontalAlignment with None -> () | Some v -> attribBuilder.Add(ViewAttributes.HorizontalAlignmentAttribKey, (v)) 
         match margin with None -> () | Some v -> attribBuilder.Add(ViewAttributes.MarginAttribKey, (v)) 
         match verticalAlignment with None -> () | Some v -> attribBuilder.Add(ViewAttributes.VerticalAlignmentAttribKey, (v)) 
@@ -80,6 +93,8 @@ type ViewBuilders() =
                     prevVerticalAlignmentOpt <- ValueSome (kvp.Value :?> System.Windows.VerticalAlignment)
                 if kvp.Key = ViewAttributes.WidthAttribKey.KeyValue then 
                     prevWidthOpt <- ValueSome (kvp.Value :?> float)
+        // Update inherited members
+        ViewBuilders.UpdateUIElement (prevOpt, curr, target)
         // Update properties
         match prevHorizontalAlignmentOpt, currHorizontalAlignmentOpt with
         | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
@@ -700,8 +715,151 @@ type ViewBuilders() =
 
         ViewElement.Create<System.Windows.Controls.StackPanel>(ViewBuilders.CreateStackPanel, (fun prevOpt curr target -> ViewBuilders.UpdateStackPanel(prevOpt, curr, target)), attribBuilder)
 
+    /// Builds the attributes for a Border in the view
+    static member inline BuildBorder(attribCount: int,
+                                     ?child: ViewElement,
+                                     ?cornerRadius: System.Windows.CornerRadius,
+                                     ?borderThickness: System.Windows.Thickness,
+                                     ?padding: System.Windows.Thickness,
+                                     ?borderBrush: System.Windows.Media.Brush,
+                                     ?background: System.Windows.Media.Brush,
+                                     ?horizontalAlignment: System.Windows.HorizontalAlignment,
+                                     ?margin: System.Windows.Thickness,
+                                     ?verticalAlignment: System.Windows.VerticalAlignment,
+                                     ?width: float) = 
+
+        let attribCount = match child with Some _ -> attribCount + 1 | None -> attribCount
+        let attribCount = match cornerRadius with Some _ -> attribCount + 1 | None -> attribCount
+        let attribCount = match borderThickness with Some _ -> attribCount + 1 | None -> attribCount
+        let attribCount = match padding with Some _ -> attribCount + 1 | None -> attribCount
+        let attribCount = match borderBrush with Some _ -> attribCount + 1 | None -> attribCount
+        let attribCount = match background with Some _ -> attribCount + 1 | None -> attribCount
+
+        let attribBuilder = ViewBuilders.BuildFrameworkElement(attribCount, ?horizontalAlignment=horizontalAlignment, ?margin=margin, ?verticalAlignment=verticalAlignment, ?width=width)
+        match child with None -> () | Some v -> attribBuilder.Add(ViewAttributes.ChildAttribKey, (v)) 
+        match cornerRadius with None -> () | Some v -> attribBuilder.Add(ViewAttributes.CornerRadiusAttribKey, (v)) 
+        match borderThickness with None -> () | Some v -> attribBuilder.Add(ViewAttributes.BorderThicknessAttribKey, (v)) 
+        match padding with None -> () | Some v -> attribBuilder.Add(ViewAttributes.PaddingAttribKey, (v)) 
+        match borderBrush with None -> () | Some v -> attribBuilder.Add(ViewAttributes.BorderBrushAttribKey, (v)) 
+        match background with None -> () | Some v -> attribBuilder.Add(ViewAttributes.BackgroundAttribKey, (v)) 
+        attribBuilder
+
+    static member CreateBorder () : System.Windows.Controls.Border =
+        new System.Windows.Controls.Border()
+
+    static member UpdateBorder (prevOpt: ViewElement voption, curr: ViewElement, target: System.Windows.Controls.Border) = 
+        let mutable prevChildOpt = ValueNone
+        let mutable currChildOpt = ValueNone
+        let mutable prevCornerRadiusOpt = ValueNone
+        let mutable currCornerRadiusOpt = ValueNone
+        let mutable prevBorderThicknessOpt = ValueNone
+        let mutable currBorderThicknessOpt = ValueNone
+        let mutable prevPaddingOpt = ValueNone
+        let mutable currPaddingOpt = ValueNone
+        let mutable prevBorderBrushOpt = ValueNone
+        let mutable currBorderBrushOpt = ValueNone
+        let mutable prevBackgroundOpt = ValueNone
+        let mutable currBackgroundOpt = ValueNone
+        for kvp in curr.AttributesKeyed do
+            if kvp.Key = ViewAttributes.ChildAttribKey.KeyValue then 
+                currChildOpt <- ValueSome (kvp.Value :?> ViewElement)
+            if kvp.Key = ViewAttributes.CornerRadiusAttribKey.KeyValue then 
+                currCornerRadiusOpt <- ValueSome (kvp.Value :?> System.Windows.CornerRadius)
+            if kvp.Key = ViewAttributes.BorderThicknessAttribKey.KeyValue then 
+                currBorderThicknessOpt <- ValueSome (kvp.Value :?> System.Windows.Thickness)
+            if kvp.Key = ViewAttributes.PaddingAttribKey.KeyValue then 
+                currPaddingOpt <- ValueSome (kvp.Value :?> System.Windows.Thickness)
+            if kvp.Key = ViewAttributes.BorderBrushAttribKey.KeyValue then 
+                currBorderBrushOpt <- ValueSome (kvp.Value :?> System.Windows.Media.Brush)
+            if kvp.Key = ViewAttributes.BackgroundAttribKey.KeyValue then 
+                currBackgroundOpt <- ValueSome (kvp.Value :?> System.Windows.Media.Brush)
+        match prevOpt with
+        | ValueNone -> ()
+        | ValueSome prev ->
+            for kvp in prev.AttributesKeyed do
+                if kvp.Key = ViewAttributes.ChildAttribKey.KeyValue then 
+                    prevChildOpt <- ValueSome (kvp.Value :?> ViewElement)
+                if kvp.Key = ViewAttributes.CornerRadiusAttribKey.KeyValue then 
+                    prevCornerRadiusOpt <- ValueSome (kvp.Value :?> System.Windows.CornerRadius)
+                if kvp.Key = ViewAttributes.BorderThicknessAttribKey.KeyValue then 
+                    prevBorderThicknessOpt <- ValueSome (kvp.Value :?> System.Windows.Thickness)
+                if kvp.Key = ViewAttributes.PaddingAttribKey.KeyValue then 
+                    prevPaddingOpt <- ValueSome (kvp.Value :?> System.Windows.Thickness)
+                if kvp.Key = ViewAttributes.BorderBrushAttribKey.KeyValue then 
+                    prevBorderBrushOpt <- ValueSome (kvp.Value :?> System.Windows.Media.Brush)
+                if kvp.Key = ViewAttributes.BackgroundAttribKey.KeyValue then 
+                    prevBackgroundOpt <- ValueSome (kvp.Value :?> System.Windows.Media.Brush)
+        // Update inherited members
+        ViewBuilders.UpdateFrameworkElement (prevOpt, curr, target)
+        // Update properties
+        match prevChildOpt, currChildOpt with
+        // For structured objects, dependsOn on reference equality
+        | ValueSome prevValue, ValueSome newValue when identical prevValue newValue -> ()
+        | ValueSome prevValue, ValueSome newValue when canReuseView prevValue newValue ->
+            newValue.UpdateIncremental(prevValue, target.Child)
+        | _, ValueSome newValue ->
+            target.Child <- (newValue.Create() :?> System.Windows.UIElement)
+        | ValueSome _, ValueNone ->
+            target.Child <- null
+        | ValueNone, ValueNone -> ()
+        match prevCornerRadiusOpt, currCornerRadiusOpt with
+        | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
+        | _, ValueSome currValue -> target.CornerRadius <-  currValue
+        | ValueSome _, ValueNone -> target.CornerRadius <- System.Windows.CornerRadius(0.)
+        | ValueNone, ValueNone -> ()
+        match prevBorderThicknessOpt, currBorderThicknessOpt with
+        | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
+        | _, ValueSome currValue -> target.BorderThickness <-  currValue
+        | ValueSome _, ValueNone -> target.BorderThickness <- System.Windows.Thickness(0.)
+        | ValueNone, ValueNone -> ()
+        match prevPaddingOpt, currPaddingOpt with
+        | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
+        | _, ValueSome currValue -> target.Padding <-  currValue
+        | ValueSome _, ValueNone -> target.Padding <- System.Windows.Thickness(0.)
+        | ValueNone, ValueNone -> ()
+        match prevBorderBrushOpt, currBorderBrushOpt with
+        | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
+        | _, ValueSome currValue -> target.BorderBrush <-  currValue
+        | ValueSome _, ValueNone -> target.BorderBrush <- null
+        | ValueNone, ValueNone -> ()
+        match prevBackgroundOpt, currBackgroundOpt with
+        | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
+        | _, ValueSome currValue -> target.Background <-  currValue
+        | ValueSome _, ValueNone -> target.Background <- null
+        | ValueNone, ValueNone -> ()
+
+    static member inline ConstructBorder(?child: ViewElement,
+                                         ?cornerRadius: System.Windows.CornerRadius,
+                                         ?borderThickness: System.Windows.Thickness,
+                                         ?padding: System.Windows.Thickness,
+                                         ?borderBrush: System.Windows.Media.Brush,
+                                         ?background: System.Windows.Media.Brush,
+                                         ?horizontalAlignment: System.Windows.HorizontalAlignment,
+                                         ?margin: System.Windows.Thickness,
+                                         ?verticalAlignment: System.Windows.VerticalAlignment,
+                                         ?width: float) = 
+
+        let attribBuilder = ViewBuilders.BuildBorder(0,
+                               ?child=child,
+                               ?cornerRadius=cornerRadius,
+                               ?borderThickness=borderThickness,
+                               ?padding=padding,
+                               ?borderBrush=borderBrush,
+                               ?background=background,
+                               ?horizontalAlignment=horizontalAlignment,
+                               ?margin=margin,
+                               ?verticalAlignment=verticalAlignment,
+                               ?width=width)
+
+        ViewElement.Create<System.Windows.Controls.Border>(ViewBuilders.CreateBorder, (fun prevOpt curr target -> ViewBuilders.UpdateBorder(prevOpt, curr, target)), attribBuilder)
+
+/// Viewer that allows to read the properties of a ViewElement representing a UIElement
+type UIElementViewer(element: ViewElement) =
+    do if not ((typeof<System.Windows.UIElement>).IsAssignableFrom(element.TargetType)) then failwithf "A ViewElement assignable to type 'System.Windows.UIElement' is expected, but '%s' was provided." element.TargetType.FullName
+
 /// Viewer that allows to read the properties of a ViewElement representing a FrameworkElement
 type FrameworkElementViewer(element: ViewElement) =
+    inherit UIElementViewer(element)
     do if not ((typeof<System.Windows.FrameworkElement>).IsAssignableFrom(element.TargetType)) then failwithf "A ViewElement assignable to type 'System.Windows.FrameworkElement' is expected, but '%s' was provided." element.TargetType.FullName
     /// Get the value of the HorizontalAlignment member
     member this.HorizontalAlignment = element.GetAttributeKeyed(ViewAttributes.HorizontalAlignmentAttribKey)
@@ -793,6 +951,23 @@ type StackPanelViewer(element: ViewElement) =
     member this.Children = element.GetAttributeKeyed(ViewAttributes.ChildrenAttribKey)
     /// Get the value of the Orientation member
     member this.Orientation = element.GetAttributeKeyed(ViewAttributes.OrientationAttribKey)
+
+/// Viewer that allows to read the properties of a ViewElement representing a Border
+type BorderViewer(element: ViewElement) =
+    inherit FrameworkElementViewer(element)
+    do if not ((typeof<System.Windows.Controls.Border>).IsAssignableFrom(element.TargetType)) then failwithf "A ViewElement assignable to type 'System.Windows.Controls.Border' is expected, but '%s' was provided." element.TargetType.FullName
+    /// Get the value of the Child member
+    member this.Child = element.GetAttributeKeyed(ViewAttributes.ChildAttribKey)
+    /// Get the value of the CornerRadius member
+    member this.CornerRadius = element.GetAttributeKeyed(ViewAttributes.CornerRadiusAttribKey)
+    /// Get the value of the BorderThickness member
+    member this.BorderThickness = element.GetAttributeKeyed(ViewAttributes.BorderThicknessAttribKey)
+    /// Get the value of the Padding member
+    member this.Padding = element.GetAttributeKeyed(ViewAttributes.PaddingAttribKey)
+    /// Get the value of the BorderBrush member
+    member this.BorderBrush = element.GetAttributeKeyed(ViewAttributes.BorderBrushAttribKey)
+    /// Get the value of the Background member
+    member this.Background = element.GetAttributeKeyed(ViewAttributes.BackgroundAttribKey)
 
 [<AbstractClass; Sealed>]
 type View private () =
@@ -913,6 +1088,29 @@ type View private () =
                                ?verticalAlignment=verticalAlignment,
                                ?width=width)
 
+    /// Describes a Border in the view
+    static member inline Border(?background: System.Windows.Media.Brush,
+                                ?borderBrush: System.Windows.Media.Brush,
+                                ?borderThickness: System.Windows.Thickness,
+                                ?child: ViewElement,
+                                ?cornerRadius: System.Windows.CornerRadius,
+                                ?horizontalAlignment: System.Windows.HorizontalAlignment,
+                                ?margin: System.Windows.Thickness,
+                                ?padding: System.Windows.Thickness,
+                                ?verticalAlignment: System.Windows.VerticalAlignment,
+                                ?width: float) =
+
+        ViewBuilders.ConstructBorder(?background=background,
+                               ?borderBrush=borderBrush,
+                               ?borderThickness=borderThickness,
+                               ?child=child,
+                               ?cornerRadius=cornerRadius,
+                               ?horizontalAlignment=horizontalAlignment,
+                               ?margin=margin,
+                               ?padding=padding,
+                               ?verticalAlignment=verticalAlignment,
+                               ?width=width)
+
 
 [<AutoOpen>]
 module ViewElementExtensions = 
@@ -979,10 +1177,30 @@ module ViewElementExtensions =
         /// Adjusts the Orientation property in the visual element
         member x.Orientation(value: System.Windows.Controls.Orientation) = x.WithAttribute(ViewAttributes.OrientationAttribKey, (value))
 
+        /// Adjusts the Child property in the visual element
+        member x.Child(value: ViewElement) = x.WithAttribute(ViewAttributes.ChildAttribKey, (value))
+
+        /// Adjusts the CornerRadius property in the visual element
+        member x.CornerRadius(value: System.Windows.CornerRadius) = x.WithAttribute(ViewAttributes.CornerRadiusAttribKey, (value))
+
+        /// Adjusts the BorderThickness property in the visual element
+        member x.BorderThickness(value: System.Windows.Thickness) = x.WithAttribute(ViewAttributes.BorderThicknessAttribKey, (value))
+
+        /// Adjusts the Padding property in the visual element
+        member x.Padding(value: System.Windows.Thickness) = x.WithAttribute(ViewAttributes.PaddingAttribKey, (value))
+
+        /// Adjusts the BorderBrush property in the visual element
+        member x.BorderBrush(value: System.Windows.Media.Brush) = x.WithAttribute(ViewAttributes.BorderBrushAttribKey, (value))
+
+        /// Adjusts the Background property in the visual element
+        member x.Background(value: System.Windows.Media.Brush) = x.WithAttribute(ViewAttributes.BackgroundAttribKey, (value))
+
         member inline x.With(?horizontalAlignment: System.Windows.HorizontalAlignment, ?margin: System.Windows.Thickness, ?verticalAlignment: System.Windows.VerticalAlignment, ?width: float, ?contentControlContent: ViewElement, 
                              ?title: string, ?command: unit -> unit, ?commandCanExecute: bool, ?buttonContent: string, ?checked: unit -> unit, 
                              ?unchecked: unit -> unit, ?isChecked: bool option, ?text: string, ?textAlignment: System.Windows.TextAlignment, ?valueChanged: float -> unit, 
-                             ?minimum: float, ?maximum: float, ?value: float, ?children: ViewElement list, ?orientation: System.Windows.Controls.Orientation) =
+                             ?minimum: float, ?maximum: float, ?value: float, ?children: ViewElement list, ?orientation: System.Windows.Controls.Orientation, 
+                             ?child: ViewElement, ?cornerRadius: System.Windows.CornerRadius, ?borderThickness: System.Windows.Thickness, ?padding: System.Windows.Thickness, ?borderBrush: System.Windows.Media.Brush, 
+                             ?background: System.Windows.Media.Brush) =
             let x = match horizontalAlignment with None -> x | Some opt -> x.HorizontalAlignment(opt)
             let x = match margin with None -> x | Some opt -> x.Margin(opt)
             let x = match verticalAlignment with None -> x | Some opt -> x.VerticalAlignment(opt)
@@ -1003,6 +1221,12 @@ module ViewElementExtensions =
             let x = match value with None -> x | Some opt -> x.Value(opt)
             let x = match children with None -> x | Some opt -> x.Children(opt)
             let x = match orientation with None -> x | Some opt -> x.Orientation(opt)
+            let x = match child with None -> x | Some opt -> x.Child(opt)
+            let x = match cornerRadius with None -> x | Some opt -> x.CornerRadius(opt)
+            let x = match borderThickness with None -> x | Some opt -> x.BorderThickness(opt)
+            let x = match padding with None -> x | Some opt -> x.Padding(opt)
+            let x = match borderBrush with None -> x | Some opt -> x.BorderBrush(opt)
+            let x = match background with None -> x | Some opt -> x.Background(opt)
             x
 
     /// Adjusts the HorizontalAlignment property in the visual element
@@ -1045,3 +1269,15 @@ module ViewElementExtensions =
     let children (value: ViewElement list) (x: ViewElement) = x.Children(value)
     /// Adjusts the Orientation property in the visual element
     let orientation (value: System.Windows.Controls.Orientation) (x: ViewElement) = x.Orientation(value)
+    /// Adjusts the Child property in the visual element
+    let child (value: ViewElement) (x: ViewElement) = x.Child(value)
+    /// Adjusts the CornerRadius property in the visual element
+    let cornerRadius (value: System.Windows.CornerRadius) (x: ViewElement) = x.CornerRadius(value)
+    /// Adjusts the BorderThickness property in the visual element
+    let borderThickness (value: System.Windows.Thickness) (x: ViewElement) = x.BorderThickness(value)
+    /// Adjusts the Padding property in the visual element
+    let padding (value: System.Windows.Thickness) (x: ViewElement) = x.Padding(value)
+    /// Adjusts the BorderBrush property in the visual element
+    let borderBrush (value: System.Windows.Media.Brush) (x: ViewElement) = x.BorderBrush(value)
+    /// Adjusts the Background property in the visual element
+    let background (value: System.Windows.Media.Brush) (x: ViewElement) = x.Background(value)
