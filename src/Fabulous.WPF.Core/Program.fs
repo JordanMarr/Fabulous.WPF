@@ -13,7 +13,7 @@ type WPFHost(app: Application) =
 
         member __.SetRootView(rootView) =
             match rootView with
-            | :? Window as window -> app.MainWindow <- window; window.Show()
+            | :? Window as window -> app.MainWindow <- window 
             | _ -> failwithf "Incorrect model type: expected a window but got a %O" (rootView.GetType())
 
 /// Program module - functions to manipulate program instances
@@ -31,11 +31,28 @@ module WPFProgram =
     let runWith app arg program =
         let host = WPFHost(app)
 
-        program
-        |> Program.withCanReuseView ViewHelpers.canReuseView
-        |> Program.withSyncDispatch syncDispatch
-        |> Program.withSyncAction syncAction
-        |> Program.runWithFabulous host arg
+        let runner = 
+            program
+            |> Program.withCanReuseView ViewHelpers.canReuseView
+            |> Program.withSyncDispatch syncDispatch
+            |> Program.withSyncAction syncAction
+            |> Program.runWithFabulous host arg
         
+        app.MainWindow.Show()
+        runner
+       
     let run app program =
         runWith app () program
+
+    let runDialog app program =
+        let host = WPFHost(app)
+
+        let runner = 
+            program
+            |> Program.withCanReuseView ViewHelpers.canReuseView
+            |> Program.withSyncDispatch syncDispatch
+            |> Program.withSyncAction syncAction
+            |> Program.runWithFabulous host ()
+
+        app.MainWindow.ShowDialog() |> ignore
+        runner
