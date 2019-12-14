@@ -130,7 +130,7 @@
                     "name": "Children",
                     "inputType": "ViewElement list",
                     "defaultValue": "null",
-                    "updateCode": "ViewUpdaters.updateStackPanelChildren"
+                    "updateCode": "ViewUpdaters.updatePanelChildren"
                 },
                 {
                     "source": "Orientation"
@@ -181,6 +181,31 @@
                     "name": "Content",
                     "inputType": "System.Object",
                     "defaultValue": "null"
+                }
+            ]
+        },
+        {
+            "type": "System.Windows.Controls.DockPanel",
+            "properties": [
+                {
+                    "source": "LastChildFill",
+                    "inputType": "bool",
+                    "defaultValue": "false"
+                },
+                {
+                    "source": null,
+                    "name": "Children",
+                    "inputType": "ViewElement list",
+                    "defaultValue": "null",
+                    "updateCode": "ViewUpdaters.updatePanelChildren"
+                }
+            ],
+            "attachedProperties": [
+                {
+                    "source": null,
+                    "name": "Dock",
+                    "inputType": "System.Windows.Controls.Dock",
+                    "defaultValue": "System.Windows.Controls.Dock.Left"
                 }
             ]
         }

@@ -36,6 +36,7 @@ module ViewAttributes =
     let BackgroundAttribKey : AttributeKey<_> = AttributeKey<_>("Background")
     let GroupNameAttribKey : AttributeKey<_> = AttributeKey<_>("GroupName")
     let RadioButtonContentAttribKey : AttributeKey<_> = AttributeKey<_>("RadioButtonContent")
+    let LastChildFillAttribKey : AttributeKey<_> = AttributeKey<_>("LastChildFill")
 
 type ViewBuilders() =
     /// Builds the attributes for a UIElement in the view
@@ -693,7 +694,7 @@ type ViewBuilders() =
         // Update inherited members
         ViewBuilders.UpdateFrameworkElement (prevOpt, curr, target)
         // Update properties
-        ViewUpdaters.updateStackPanelChildren prevChildrenOpt currChildrenOpt target
+        ViewUpdaters.updatePanelChildren prevChildrenOpt currChildrenOpt target
         match prevOrientationOpt, currOrientationOpt with
         | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
         | _, ValueSome currValue -> target.Orientation <-  currValue
@@ -940,6 +941,71 @@ type ViewBuilders() =
 
         ViewElement.Create<System.Windows.Controls.RadioButton>(ViewBuilders.CreateRadioButton, (fun prevOpt curr target -> ViewBuilders.UpdateRadioButton(prevOpt, curr, target)), attribBuilder)
 
+    /// Builds the attributes for a DockPanel in the view
+    static member inline BuildDockPanel(attribCount: int,
+                                        ?lastChildFill: bool,
+                                        ?children: ViewElement list,
+                                        ?horizontalAlignment: System.Windows.HorizontalAlignment,
+                                        ?margin: System.Windows.Thickness,
+                                        ?verticalAlignment: System.Windows.VerticalAlignment,
+                                        ?width: float) = 
+
+        let attribCount = match lastChildFill with Some _ -> attribCount + 1 | None -> attribCount
+        let attribCount = match children with Some _ -> attribCount + 1 | None -> attribCount
+
+        let attribBuilder = ViewBuilders.BuildFrameworkElement(attribCount, ?horizontalAlignment=horizontalAlignment, ?margin=margin, ?verticalAlignment=verticalAlignment, ?width=width)
+        match lastChildFill with None -> () | Some v -> attribBuilder.Add(ViewAttributes.LastChildFillAttribKey, (v)) 
+        match children with None -> () | Some v -> attribBuilder.Add(ViewAttributes.ChildrenAttribKey, Array.ofList(v)) 
+        attribBuilder
+
+    static member CreateDockPanel () : System.Windows.Controls.DockPanel =
+        new System.Windows.Controls.DockPanel()
+
+    static member UpdateDockPanel (prevOpt: ViewElement voption, curr: ViewElement, target: System.Windows.Controls.DockPanel) = 
+        let mutable prevLastChildFillOpt = ValueNone
+        let mutable currLastChildFillOpt = ValueNone
+        let mutable prevChildrenOpt = ValueNone
+        let mutable currChildrenOpt = ValueNone
+        for kvp in curr.AttributesKeyed do
+            if kvp.Key = ViewAttributes.LastChildFillAttribKey.KeyValue then 
+                currLastChildFillOpt <- ValueSome (kvp.Value :?> bool)
+            if kvp.Key = ViewAttributes.ChildrenAttribKey.KeyValue then 
+                currChildrenOpt <- ValueSome (kvp.Value :?> ViewElement array)
+        match prevOpt with
+        | ValueNone -> ()
+        | ValueSome prev ->
+            for kvp in prev.AttributesKeyed do
+                if kvp.Key = ViewAttributes.LastChildFillAttribKey.KeyValue then 
+                    prevLastChildFillOpt <- ValueSome (kvp.Value :?> bool)
+                if kvp.Key = ViewAttributes.ChildrenAttribKey.KeyValue then 
+                    prevChildrenOpt <- ValueSome (kvp.Value :?> ViewElement array)
+        // Update inherited members
+        ViewBuilders.UpdateFrameworkElement (prevOpt, curr, target)
+        // Update properties
+        match prevLastChildFillOpt, currLastChildFillOpt with
+        | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
+        | _, ValueSome currValue -> target.LastChildFill <-  currValue
+        | ValueSome _, ValueNone -> target.LastChildFill <- false
+        | ValueNone, ValueNone -> ()
+        ViewUpdaters.updatePanelChildren prevChildrenOpt currChildrenOpt target
+
+    static member inline ConstructDockPanel(?lastChildFill: bool,
+                                            ?children: ViewElement list,
+                                            ?horizontalAlignment: System.Windows.HorizontalAlignment,
+                                            ?margin: System.Windows.Thickness,
+                                            ?verticalAlignment: System.Windows.VerticalAlignment,
+                                            ?width: float) = 
+
+        let attribBuilder = ViewBuilders.BuildDockPanel(0,
+                               ?lastChildFill=lastChildFill,
+                               ?children=children,
+                               ?horizontalAlignment=horizontalAlignment,
+                               ?margin=margin,
+                               ?verticalAlignment=verticalAlignment,
+                               ?width=width)
+
+        ViewElement.Create<System.Windows.Controls.DockPanel>(ViewBuilders.CreateDockPanel, (fun prevOpt curr target -> ViewBuilders.UpdateDockPanel(prevOpt, curr, target)), attribBuilder)
+
 /// Viewer that allows to read the properties of a ViewElement representing a UIElement
 type UIElementViewer(element: ViewElement) =
     do if not ((typeof<System.Windows.UIElement>).IsAssignableFrom(element.TargetType)) then failwithf "A ViewElement assignable to type 'System.Windows.UIElement' is expected, but '%s' was provided." element.TargetType.FullName
@@ -1064,6 +1130,15 @@ type RadioButtonViewer(element: ViewElement) =
     member this.GroupName = element.GetAttributeKeyed(ViewAttributes.GroupNameAttribKey)
     /// Get the value of the Content member
     member this.Content = element.GetAttributeKeyed(ViewAttributes.RadioButtonContentAttribKey)
+
+/// Viewer that allows to read the properties of a ViewElement representing a DockPanel
+type DockPanelViewer(element: ViewElement) =
+    inherit FrameworkElementViewer(element)
+    do if not ((typeof<System.Windows.Controls.DockPanel>).IsAssignableFrom(element.TargetType)) then failwithf "A ViewElement assignable to type 'System.Windows.Controls.DockPanel' is expected, but '%s' was provided." element.TargetType.FullName
+    /// Get the value of the LastChildFill member
+    member this.LastChildFill = element.GetAttributeKeyed(ViewAttributes.LastChildFillAttribKey)
+    /// Get the value of the Children member
+    member this.Children = element.GetAttributeKeyed(ViewAttributes.ChildrenAttribKey)
 
 [<AbstractClass; Sealed>]
 type View private () =
@@ -1232,6 +1307,21 @@ type View private () =
                                ?verticalAlignment=verticalAlignment,
                                ?width=width)
 
+    /// Describes a DockPanel in the view
+    static member inline DockPanel(?children: ViewElement list,
+                                   ?horizontalAlignment: System.Windows.HorizontalAlignment,
+                                   ?lastChildFill: bool,
+                                   ?margin: System.Windows.Thickness,
+                                   ?verticalAlignment: System.Windows.VerticalAlignment,
+                                   ?width: float) =
+
+        ViewBuilders.ConstructDockPanel(?children=children,
+                               ?horizontalAlignment=horizontalAlignment,
+                               ?lastChildFill=lastChildFill,
+                               ?margin=margin,
+                               ?verticalAlignment=verticalAlignment,
+                               ?width=width)
+
 
 [<AutoOpen>]
 module ViewElementExtensions = 
@@ -1322,12 +1412,15 @@ module ViewElementExtensions =
         /// Adjusts the RadioButtonContent property in the visual element
         member x.RadioButtonContent(value: System.Object) = x.WithAttribute(ViewAttributes.RadioButtonContentAttribKey, (value))
 
+        /// Adjusts the LastChildFill property in the visual element
+        member x.LastChildFill(value: bool) = x.WithAttribute(ViewAttributes.LastChildFillAttribKey, (value))
+
         member inline x.With(?horizontalAlignment: System.Windows.HorizontalAlignment, ?margin: System.Windows.Thickness, ?verticalAlignment: System.Windows.VerticalAlignment, ?width: float, ?contentControlContent: ViewElement, 
                              ?title: string, ?command: unit -> unit, ?commandCanExecute: bool, ?buttonContent: string, ?checked: unit -> unit, 
                              ?unchecked: unit -> unit, ?isChecked: bool option, ?text: string, ?textAlignment: System.Windows.TextAlignment, ?valueChanged: float -> unit, 
                              ?minimum: float, ?maximum: float, ?value: float, ?children: ViewElement list, ?orientation: System.Windows.Controls.Orientation, 
                              ?child: ViewElement, ?cornerRadius: System.Windows.CornerRadius, ?borderThickness: System.Windows.Thickness, ?padding: System.Windows.Thickness, ?borderBrush: System.Windows.Media.Brush, 
-                             ?background: System.Windows.Media.Brush, ?groupName: System.String, ?radioButtonContent: System.Object) =
+                             ?background: System.Windows.Media.Brush, ?groupName: System.String, ?radioButtonContent: System.Object, ?lastChildFill: bool) =
             let x = match horizontalAlignment with None -> x | Some opt -> x.HorizontalAlignment(opt)
             let x = match margin with None -> x | Some opt -> x.Margin(opt)
             let x = match verticalAlignment with None -> x | Some opt -> x.VerticalAlignment(opt)
@@ -1356,6 +1449,7 @@ module ViewElementExtensions =
             let x = match background with None -> x | Some opt -> x.Background(opt)
             let x = match groupName with None -> x | Some opt -> x.GroupName(opt)
             let x = match radioButtonContent with None -> x | Some opt -> x.RadioButtonContent(opt)
+            let x = match lastChildFill with None -> x | Some opt -> x.LastChildFill(opt)
             x
 
     /// Adjusts the HorizontalAlignment property in the visual element
@@ -1414,3 +1508,5 @@ module ViewElementExtensions =
     let groupName (value: System.String) (x: ViewElement) = x.GroupName(value)
     /// Adjusts the RadioButtonContent property in the visual element
     let radioButtonContent (value: System.Object) (x: ViewElement) = x.RadioButtonContent(value)
+    /// Adjusts the LastChildFill property in the visual element
+    let lastChildFill (value: bool) (x: ViewElement) = x.LastChildFill(value)

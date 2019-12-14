@@ -58,7 +58,7 @@ module ViewUpdaters =
                             prevChildOpt, targetColl.[i]
                     attach prevChildOpt newChild targetChild
 
-    let updateStackPanelChildren (prev: ViewElement array voption) (curr: ViewElement array voption) (target: System.Windows.Controls.StackPanel) =
+    let updatePanelChildren (prev: ViewElement array voption) (curr: ViewElement array voption) (target: System.Windows.Controls.Panel) =
         updateCollectionGeneric prev curr target.Children
             (fun (x:ViewElement) -> x.Create())
             (fun _ _ _ -> ())
