@@ -168,6 +168,21 @@
                     "defaultValue": "null"
                 }
             ]
+        },
+        {
+            "type": "System.Windows.Controls.RadioButton",
+            "properties": [
+                {
+                    "source": "GroupName",
+                    "inputType": "System.String",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "Content",
+                    "inputType": "System.Object",
+                    "defaultValue": "null"
+                }
+            ]
         }
     ]
 }

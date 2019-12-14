@@ -34,6 +34,8 @@ module ViewAttributes =
     let PaddingAttribKey : AttributeKey<_> = AttributeKey<_>("Padding")
     let BorderBrushAttribKey : AttributeKey<_> = AttributeKey<_>("BorderBrush")
     let BackgroundAttribKey : AttributeKey<_> = AttributeKey<_>("Background")
+    let GroupNameAttribKey : AttributeKey<_> = AttributeKey<_>("GroupName")
+    let RadioButtonContentAttribKey : AttributeKey<_> = AttributeKey<_>("RadioButtonContent")
 
 type ViewBuilders() =
     /// Builds the attributes for a UIElement in the view
@@ -853,6 +855,91 @@ type ViewBuilders() =
 
         ViewElement.Create<System.Windows.Controls.Border>(ViewBuilders.CreateBorder, (fun prevOpt curr target -> ViewBuilders.UpdateBorder(prevOpt, curr, target)), attribBuilder)
 
+    /// Builds the attributes for a RadioButton in the view
+    static member inline BuildRadioButton(attribCount: int,
+                                          ?groupName: System.String,
+                                          ?content: System.Object,
+                                          ?isChecked: bool option,
+                                          ?command: unit -> unit,
+                                          ?commandCanExecute: bool,
+                                          ?horizontalAlignment: System.Windows.HorizontalAlignment,
+                                          ?margin: System.Windows.Thickness,
+                                          ?verticalAlignment: System.Windows.VerticalAlignment,
+                                          ?width: float,
+                                          ?checked: unit -> unit,
+                                          ?unchecked: unit -> unit) = 
+
+        let attribCount = match groupName with Some _ -> attribCount + 1 | None -> attribCount
+        let attribCount = match content with Some _ -> attribCount + 1 | None -> attribCount
+
+        let attribBuilder = ViewBuilders.BuildToggleButton(attribCount, ?isChecked=isChecked, ?command=command, ?commandCanExecute=commandCanExecute, ?horizontalAlignment=horizontalAlignment, ?margin=margin, 
+                                                           ?verticalAlignment=verticalAlignment, ?width=width, ?checked=checked, ?unchecked=unchecked)
+        match groupName with None -> () | Some v -> attribBuilder.Add(ViewAttributes.GroupNameAttribKey, (v)) 
+        match content with None -> () | Some v -> attribBuilder.Add(ViewAttributes.RadioButtonContentAttribKey, (v)) 
+        attribBuilder
+
+    static member CreateRadioButton () : System.Windows.Controls.RadioButton =
+        new System.Windows.Controls.RadioButton()
+
+    static member UpdateRadioButton (prevOpt: ViewElement voption, curr: ViewElement, target: System.Windows.Controls.RadioButton) = 
+        let mutable prevGroupNameOpt = ValueNone
+        let mutable currGroupNameOpt = ValueNone
+        let mutable prevRadioButtonContentOpt = ValueNone
+        let mutable currRadioButtonContentOpt = ValueNone
+        for kvp in curr.AttributesKeyed do
+            if kvp.Key = ViewAttributes.GroupNameAttribKey.KeyValue then 
+                currGroupNameOpt <- ValueSome (kvp.Value :?> System.String)
+            if kvp.Key = ViewAttributes.RadioButtonContentAttribKey.KeyValue then 
+                currRadioButtonContentOpt <- ValueSome (kvp.Value :?> System.Object)
+        match prevOpt with
+        | ValueNone -> ()
+        | ValueSome prev ->
+            for kvp in prev.AttributesKeyed do
+                if kvp.Key = ViewAttributes.GroupNameAttribKey.KeyValue then 
+                    prevGroupNameOpt <- ValueSome (kvp.Value :?> System.String)
+                if kvp.Key = ViewAttributes.RadioButtonContentAttribKey.KeyValue then 
+                    prevRadioButtonContentOpt <- ValueSome (kvp.Value :?> System.Object)
+        // Update inherited members
+        ViewBuilders.UpdateToggleButton (prevOpt, curr, target)
+        // Update properties
+        match prevGroupNameOpt, currGroupNameOpt with
+        | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
+        | _, ValueSome currValue -> target.GroupName <-  currValue
+        | ValueSome _, ValueNone -> target.GroupName <- System.String.Empty
+        | ValueNone, ValueNone -> ()
+        match prevRadioButtonContentOpt, currRadioButtonContentOpt with
+        | ValueSome prevValue, ValueSome currValue when prevValue = currValue -> ()
+        | _, ValueSome currValue -> target.Content <-  currValue
+        | ValueSome _, ValueNone -> target.Content <- null
+        | ValueNone, ValueNone -> ()
+
+    static member inline ConstructRadioButton(?groupName: System.String,
+                                              ?content: System.Object,
+                                              ?isChecked: bool option,
+                                              ?command: unit -> unit,
+                                              ?commandCanExecute: bool,
+                                              ?horizontalAlignment: System.Windows.HorizontalAlignment,
+                                              ?margin: System.Windows.Thickness,
+                                              ?verticalAlignment: System.Windows.VerticalAlignment,
+                                              ?width: float,
+                                              ?checked: unit -> unit,
+                                              ?unchecked: unit -> unit) = 
+
+        let attribBuilder = ViewBuilders.BuildRadioButton(0,
+                               ?groupName=groupName,
+                               ?content=content,
+                               ?isChecked=isChecked,
+                               ?command=command,
+                               ?commandCanExecute=commandCanExecute,
+                               ?horizontalAlignment=horizontalAlignment,
+                               ?margin=margin,
+                               ?verticalAlignment=verticalAlignment,
+                               ?width=width,
+                               ?checked=checked,
+                               ?unchecked=unchecked)
+
+        ViewElement.Create<System.Windows.Controls.RadioButton>(ViewBuilders.CreateRadioButton, (fun prevOpt curr target -> ViewBuilders.UpdateRadioButton(prevOpt, curr, target)), attribBuilder)
+
 /// Viewer that allows to read the properties of a ViewElement representing a UIElement
 type UIElementViewer(element: ViewElement) =
     do if not ((typeof<System.Windows.UIElement>).IsAssignableFrom(element.TargetType)) then failwithf "A ViewElement assignable to type 'System.Windows.UIElement' is expected, but '%s' was provided." element.TargetType.FullName
@@ -968,6 +1055,15 @@ type BorderViewer(element: ViewElement) =
     member this.BorderBrush = element.GetAttributeKeyed(ViewAttributes.BorderBrushAttribKey)
     /// Get the value of the Background member
     member this.Background = element.GetAttributeKeyed(ViewAttributes.BackgroundAttribKey)
+
+/// Viewer that allows to read the properties of a ViewElement representing a RadioButton
+type RadioButtonViewer(element: ViewElement) =
+    inherit ToggleButtonViewer(element)
+    do if not ((typeof<System.Windows.Controls.RadioButton>).IsAssignableFrom(element.TargetType)) then failwithf "A ViewElement assignable to type 'System.Windows.Controls.RadioButton' is expected, but '%s' was provided." element.TargetType.FullName
+    /// Get the value of the GroupName member
+    member this.GroupName = element.GetAttributeKeyed(ViewAttributes.GroupNameAttribKey)
+    /// Get the value of the Content member
+    member this.Content = element.GetAttributeKeyed(ViewAttributes.RadioButtonContentAttribKey)
 
 [<AbstractClass; Sealed>]
 type View private () =
@@ -1111,6 +1207,31 @@ type View private () =
                                ?verticalAlignment=verticalAlignment,
                                ?width=width)
 
+    /// Describes a RadioButton in the view
+    static member inline RadioButton(?checked: unit -> unit,
+                                     ?command: unit -> unit,
+                                     ?commandCanExecute: bool,
+                                     ?content: System.Object,
+                                     ?groupName: System.String,
+                                     ?horizontalAlignment: System.Windows.HorizontalAlignment,
+                                     ?isChecked: bool option,
+                                     ?margin: System.Windows.Thickness,
+                                     ?unchecked: unit -> unit,
+                                     ?verticalAlignment: System.Windows.VerticalAlignment,
+                                     ?width: float) =
+
+        ViewBuilders.ConstructRadioButton(?checked=checked,
+                               ?command=command,
+                               ?commandCanExecute=commandCanExecute,
+                               ?content=content,
+                               ?groupName=groupName,
+                               ?horizontalAlignment=horizontalAlignment,
+                               ?isChecked=isChecked,
+                               ?margin=margin,
+                               ?unchecked=unchecked,
+                               ?verticalAlignment=verticalAlignment,
+                               ?width=width)
+
 
 [<AutoOpen>]
 module ViewElementExtensions = 
@@ -1195,12 +1316,18 @@ module ViewElementExtensions =
         /// Adjusts the Background property in the visual element
         member x.Background(value: System.Windows.Media.Brush) = x.WithAttribute(ViewAttributes.BackgroundAttribKey, (value))
 
+        /// Adjusts the GroupName property in the visual element
+        member x.GroupName(value: System.String) = x.WithAttribute(ViewAttributes.GroupNameAttribKey, (value))
+
+        /// Adjusts the RadioButtonContent property in the visual element
+        member x.RadioButtonContent(value: System.Object) = x.WithAttribute(ViewAttributes.RadioButtonContentAttribKey, (value))
+
         member inline x.With(?horizontalAlignment: System.Windows.HorizontalAlignment, ?margin: System.Windows.Thickness, ?verticalAlignment: System.Windows.VerticalAlignment, ?width: float, ?contentControlContent: ViewElement, 
                              ?title: string, ?command: unit -> unit, ?commandCanExecute: bool, ?buttonContent: string, ?checked: unit -> unit, 
                              ?unchecked: unit -> unit, ?isChecked: bool option, ?text: string, ?textAlignment: System.Windows.TextAlignment, ?valueChanged: float -> unit, 
                              ?minimum: float, ?maximum: float, ?value: float, ?children: ViewElement list, ?orientation: System.Windows.Controls.Orientation, 
                              ?child: ViewElement, ?cornerRadius: System.Windows.CornerRadius, ?borderThickness: System.Windows.Thickness, ?padding: System.Windows.Thickness, ?borderBrush: System.Windows.Media.Brush, 
-                             ?background: System.Windows.Media.Brush) =
+                             ?background: System.Windows.Media.Brush, ?groupName: System.String, ?radioButtonContent: System.Object) =
             let x = match horizontalAlignment with None -> x | Some opt -> x.HorizontalAlignment(opt)
             let x = match margin with None -> x | Some opt -> x.Margin(opt)
             let x = match verticalAlignment with None -> x | Some opt -> x.VerticalAlignment(opt)
@@ -1227,6 +1354,8 @@ module ViewElementExtensions =
             let x = match padding with None -> x | Some opt -> x.Padding(opt)
             let x = match borderBrush with None -> x | Some opt -> x.BorderBrush(opt)
             let x = match background with None -> x | Some opt -> x.Background(opt)
+            let x = match groupName with None -> x | Some opt -> x.GroupName(opt)
+            let x = match radioButtonContent with None -> x | Some opt -> x.RadioButtonContent(opt)
             x
 
     /// Adjusts the HorizontalAlignment property in the visual element
@@ -1281,3 +1410,7 @@ module ViewElementExtensions =
     let borderBrush (value: System.Windows.Media.Brush) (x: ViewElement) = x.BorderBrush(value)
     /// Adjusts the Background property in the visual element
     let background (value: System.Windows.Media.Brush) (x: ViewElement) = x.Background(value)
+    /// Adjusts the GroupName property in the visual element
+    let groupName (value: System.String) (x: ViewElement) = x.GroupName(value)
+    /// Adjusts the RadioButtonContent property in the visual element
+    let radioButtonContent (value: System.Object) (x: ViewElement) = x.RadioButtonContent(value)
